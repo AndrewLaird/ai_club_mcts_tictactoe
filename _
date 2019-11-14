@@ -1,0 +1,227 @@
+# different understanding of MCTS
+
+# three main trees
+# Q -> mapping from states,action pairs to values
+#       Q is updated while we are traversing the mcts tree
+# P -> produced from the neural network and it is a policy from a state
+# N -> maps states to the amount of times we have visited them
+
+# recap
+# Q[start_state][action] -> value of taking action
+# P[start_state][action] -> neural networks take on value
+# N[start_state][action] -> number of times we have taken this path
+
+
+# web.stanford.edu/~surag/posts/alphazero.html
+from tictactoe_module import tictactoe_methods
+import math
+import random
+import numpy as np
+
+
+class tabular_mcts:
+
+    def __init__(self,number_actions=9):
+        self.Q = {}
+        self.N = {}
+        self.P = {}
+        self.number_actions = number_actions
+        self.tictactoe_functions = tictactoe_methods()
+
+    def serialize_board(self,board):
+        # we know numbers will only be 0,1,2
+        # so we are going to join them into a string
+        serialized_string = "".join([str(x) for x in board])
+        return serialized_string
+
+    def seen(self,board):
+        serialized_board = self.serialize_board(board)
+        return serialized_board in self.Q.keys()
+
+    def get_Q(self,board):
+        serialized_board = self.serialize_board(board)
+
+        return self.Q[serialized_board]
+
+    def get_N(self, board):
+        serialized_board = self.serialize_board(board)
+
+        return self.N[serialized_board]
+
+    def get_P(self,board):
+        serialized_board = self.serialize_board(board)
+
+        return self.P[serialized_board]
+
+
+    def update_Q(self,board,action,value):
+        serialized_board = self.serialize_board(board)
+        N_state_action = self.get_N(board)[action]
+        Q_state_action = self.get_Q(board)[action]
+        # update the moving average
+        print('updating Q',N_state_action,Q_state_action, value)
+
+        self.Q[serialized_board][action]  = (N_state_action*Q_state_action + value) / (N_state_action + 1)
+
+    def increment_N(self,board,action):
+        serialized_board = self.serialize_board(board)
+        self.N[serialized_board][action]  += 1
+
+    def set_P(self,board,policy):
+        serialized_board = self.serialize_board(board)
+        self.P[serialized_board] = policy
+
+    def call_model(self,board):
+        policy = [1/9 for i in range(9)]# [random.random() - .5 for i in range(9)]
+        value = random.random() - .5
+        return [policy, value]
+
+    def check_for_winner(self,board):
+        winner = self.tictactoe_functions.get_winner(board)
+        # flip winner around, if its -1 no one has one and we want to represent that as -2
+        if(winner == -1):
+            return -2
+        # if its 0 its a tie
+        if(winner == 0):
+            # tie
+            return 0
+        # if its 1 player 1
+        if(winner ==  1):
+            return 1
+        # if its 2 player 2 has one, but we want to represent that as -1
+        if(winner == 2):
+            return -1
+
+    def expand_node(self,board):
+        # first add this to Q,N
+        serialized_board =  self.serialize_board(board)
+        self.Q[serialized_board] = [0 for i in range(self.number_actions)]
+        self.N[serialized_board] = [0 for i in range(self.number_actions)]
+
+    def simulate_step(self,board,turn):
+        # print("looking at board", board)
+        # check board to see if we have seen this before
+        if(not self.seen(board)):
+            # we haven't seen this board before
+            # gotta expand this node
+            # print("\t\t\texpaning node",board)
+            self.expand_node(board)
+            predicted_policy, predicted_value = self.call_model(board)
+            self.set_P(board, predicted_policy)
+            return  predicted_value
+
+        winner = self.check_for_winner(board)
+        if(winner != -2):
+            return winner
+        # we have seen this position before, so we have to go deeper
+
+        # to know which node we want to select to explore we use an interesting formula
+        # which is U[s][a] = Q[s][a] + c_puct*P[s][a] * sqrt(sum(N[s]))/(1+N[s][a])
+        c_puct = 1.0 # used for exploration
+
+        # U stands for Upper confidence bound
+
+        best_U = -1
+        best_action = 0
+
+        U_list = []
+        
+        N_s = self.get_N(board)
+        for action in self.tictactoe_functions.get_possible_actions(board):
+            Q_s_a = self.get_Q(board)[action]
+            P_s_a = self.get_P(board)[action]
+            if(turn == 2):
+                # the other users turn
+                # inverse the Q,P values
+                Q_s_a = -Q_s_a
+                P_s_a = -P_s_a
+            # print(turn, Q_s_a)
+            # N_term = math.sqrt(sum(N_s))/(N_s[action]+1)
+            N_term = math.sqrt(math.log2(sum(N_s)+1)/(N_s[action]+1))
+
+            U = Q_s_a + c_puct*P_s_a*N_term
+
+            if(False):
+                print('--------------')
+                print("board:",board)
+                print('action:',action)
+                print("Q:",Q_s_a, "P:",P_s_a)
+                print("U:",U)
+                print('-------------')
+
+
+            U_list.append((action,U))
+
+            if(U > best_U):
+                best_U = U
+                best_action = action
+
+        if(False):
+            print("--------------")
+            print("board:", board)
+            print("U:",U_list)
+            print("N:",N_s)
+            print("possible",self.tictactoe_functions.get_possible_actions(board))
+            print("best one", best_action)
+            
+        # print(best_action)
+        board_after_action = self.tictactoe_functions.get_next_board(board,best_action,turn)
+
+        next_turn = 2 if turn == 1 else 1
+        value_below = self.simulate_step(board_after_action,next_turn)
+        # update Q and N
+        self.update_Q(board, best_action, value_below)
+        self.increment_N(board, best_action)
+
+        return -value_below
+
+
+
+
+
+
+if __name__ == "__main__":
+    mcts_model = tabular_mcts()
+
+    tictactoe_functions = tictactoe_methods()
+    board = tictactoe_functions.get_initial_board()
+    turn = 1
+    for game_steps in range(10):
+
+        # simulating the games
+        simulation_steps = 10
+        for i in range(simulation_steps):
+            #print('sim:',i)
+            mcts_model.simulate_step(board,turn)
+
+        # getting the actions from the mcts tree
+        actions_list = [n for n in mcts_model.get_N(board)]
+        
+        # flip the value function if the player is player 2
+        # don't think we want this
+        # if(turn == 2):
+        #    actions_list = [-x for x in actions_list]
+
+        # take the action that was visited the most
+        action = np.argmax(actions_list)
+        if(False):
+            print("picking action")
+            print("visit list",actions_list)
+            print("board:",board)
+            print("action:",action)
+        
+
+        board = tictactoe_functions.get_next_board(board, action, turn)
+
+        winner = tictactoe_functions.get_winner(board)
+        if(winner != -1):
+            print("final board",board,"winner",winner)
+            break
+        print("new_board",board)
+        turn = 2 if turn == 1 else 1
+
+
+
+    # look at the value at the top and make our move
+    # for state in mcts_model.Q:
+    #     print(state, mcts_model.Q[state])
