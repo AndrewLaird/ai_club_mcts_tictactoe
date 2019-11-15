@@ -32,6 +32,7 @@ class torch_policy_value_model(nn.Module):
         self.input_layer = nn.Linear(9,256)
         self.hidden_layer = nn.Linear(256,512)
         self.hidden_layer2 = nn.Linear(512,512)
+        self.sigmoid = nn.Sigmoid()
         self.value_output = nn.Linear(512,1)
         self.policy_output = nn.Linear(512,9)
 
@@ -44,7 +45,7 @@ class torch_policy_value_model(nn.Module):
         x = torch.tanh(x)
 
         policy  = self.policy_output(x)
-        policy  = F.relu(policy)
+        policy  = self.sigmoid(policy)
 
         value  = self.value_output(x)
         value = torch.tanh(value)
@@ -64,7 +65,7 @@ class model_wrapper():
             self.model = torch_policy_value_model()
         else:
             self.model = policy_value_model
-        learning_rate = 0.001
+        learning_rate = 0.0001
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
 
@@ -96,6 +97,11 @@ class model_wrapper():
         return onehots
 
     def train(self, data):
+        # shuffle data before we do anything with it
+        np.random.shuffle(data)
+
+
+
         # data should be in state,action,new_state,reward
         obs,actions,new_obs,values = zip(*data)
 
@@ -225,7 +231,7 @@ class tabular_mcts:
             # check if this is a winning board
             winner = self.check_for_winner(board)
             if(winner != -2):
-                return -winner
+                return winner
                 
             # we haven't seen this board before
             # gotta expand this node
@@ -234,7 +240,7 @@ class tabular_mcts:
             predicted_policy = [float(x) for x in predicted_policy]
             self.set_P(board, predicted_policy)
             predicted_value = float(predicted_value)
-            return  -predicted_value
+            return  predicted_value
 
         winner = self.check_for_winner(board)
         if(winner != -2):

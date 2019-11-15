@@ -45,7 +45,9 @@ if __name__ == "__main__":
     actions= [1/9 for i in range(9)]
 
     experience = [[board,actions,board,0] for board in all_boards]
-    mcts_model.train(experience)
+    for i in range(10):
+        print(i)
+        mcts_model.train(experience)
 
     result = mcts_model.call_model(all_boards[0])
     print(result)

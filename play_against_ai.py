@@ -28,7 +28,7 @@ from os import path
 from tabular_model import tabular_mcts,torch_policy_value_model
 
 
-def run_game_with_human(mcts_model):
+def run_game_with_human(mcts_model,human_player_pos):
 
     tictactoe_functions = tictactoe_methods()
     board = tictactoe_functions.get_initial_board()
@@ -36,10 +36,10 @@ def run_game_with_human(mcts_model):
     for game_steps in range(11):
         print("Turn #%d:"%turn)
         tictactoe_functions.pretty_print(board)
-        if(turn % 2 == 0):
+        if(turn % 2 == human_player_pos):
             # robot turn
             # simulating the games
-            simulation_steps = 25
+            simulation_steps = 100
             for i in range(simulation_steps):
                 #print('sim:',i)
                 mcts_model.simulate_step(board,turn)
@@ -71,8 +71,15 @@ if __name__ == "__main__":
     # create this model and 
     policy_value_model = torch.load("policy_value_model.torch")
 
+    human_player_position = int(input("Do you want to go first[0] for second[1]: "))
     # inialize the model
     mcts_model = tabular_mcts(policy_value_model=policy_value_model)
 
-    winner = run_game_with_human(mcts_model)
-    print("Player %d Won!"%(winner))
+    winner = run_game_with_human(mcts_model,human_player_pos=human_player_position)
+    if(winner == 0):
+        print("Tie!")
+    elif(winner == human_player_position-1):
+        print("Human Player was victorious")
+    else:
+        print("Submit to your robot overlords human")
+

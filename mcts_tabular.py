@@ -62,7 +62,7 @@ class fixed_size_list():
     def get_list(self):
         return self.buffer
 
-def get_model_action(model,board,turn,temp=1.0):
+def get_model_action(model,board,turn):
     # simulating the games
     simulation_steps = 25
     for i in range(simulation_steps):
@@ -105,6 +105,11 @@ def pit(old_model,new_model,number_of_games=15):
             else:
                 action_list = get_model_action(player2,board,turn)
                 action = np.argmax(action_list) 
+                
+            if(player_turn == 0):
+                # first move completely random
+                action = np.random.choice(9,1)[0]
+
 
             board = tictactoe_functions.get_next_board(board, action, turn)
             winner = tictactoe_functions.get_winner(board)
@@ -149,13 +154,6 @@ def get_game_action_probs(mcts_model, board, turn, temp=1.0):
     return action_probs
 
 
-
-
-
-        
-
-
-
 def run_game(mcts_model):
 
     tictactoe_functions = tictactoe_methods()
@@ -163,16 +161,18 @@ def run_game(mcts_model):
     experience = []
     turn = 1
     for game_step in range(10):
-        temp = 1.0 if game_step < 3 else 0
+        # 1 for exploration
+        # 0 for the pit
+        temp = 1.0 
         action_probs = get_game_action_probs(mcts_model,board,turn,temp=temp)
 
 
         #chose a action from these probabilities
         action = np.random.choice(9,1,p=action_probs)[0]
 
-        # if(game_step == 0):
+        if(game_step == 0):
             # truly random for first step
-        #     action = np.random.choice(9,1)[0]
+            action = np.random.choice(9,1)[0]
 
 
         old_board = board
@@ -216,10 +216,9 @@ def update_experience_value(winner,experience):
 if __name__ == "__main__":
 
     policy_value_model = None
-    #if(path.exists("value_model.torch")):
-    #    value_model = torch.load("value_model.torch")
-    #if(path.exists("policy_model.torch")):
-    #    policy_model = torch.load("policy_model.torch")
+    if(path.exists("policy_value_model.torch")):
+        print("Loading Prexisting model")
+        policy_value_model = torch.load("policy_value_model.torch")
 
     # inialize the model
     mcts_model = tabular_mcts(policy_value_model = policy_value_model)
