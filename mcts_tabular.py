@@ -8,8 +8,7 @@
 # recap
 # Q[start_state][action] -> value of taking action
 # P[start_state][action] -> neural networks take on value
-# N[start_state][action] -> number of times we have taken this path
-
+# N[start_state][action] -> number of times we have taken this path 
 
 # web.stanford.edu/~surag/posts/alphazero.html
 from tictactoe_module import tictactoe_methods
@@ -26,6 +25,7 @@ import sys
 from os import path
 from tabular_model import tabular_mcts,torch_policy_value_model
 import signal
+from tqdm import tqdm
 import sys
 
 
@@ -64,13 +64,13 @@ class fixed_size_list():
 
 def get_model_action(model,board,turn):
     # simulating the games
-    simulation_steps = 25
+    simulation_steps = 50
     for i in range(simulation_steps):
         #print('sim:',i)
         model.simulate_step(board,turn)
 
     # getting the actions from the mcts tree
-    actions_list = [n for n in model.get_N(board)]
+    actions_list = [n for n in model.get_action_list(board,turn)]
     
 
     # take the action that was visited the most
@@ -98,6 +98,7 @@ def pit(old_model,new_model,number_of_games=15):
             player2 = old_model
 
         for player_turn in range(9):
+
             if(player_turn % 2 == 0):
                 # get player 1's action
                 action_list = get_model_action(player1,board,turn)
@@ -109,6 +110,7 @@ def pit(old_model,new_model,number_of_games=15):
             if(player_turn == 0):
                 # first move completely random
                 action = np.random.choice(9,1)[0]
+
 
 
             board = tictactoe_functions.get_next_board(board, action, turn)
@@ -161,8 +163,11 @@ def run_game(mcts_model):
     experience = []
     turn = 1
     for game_step in range(10):
+
+        # temp controls how likely 
+        # the tree will explore
         # 1 for exploration
-        # 0 for the pit
+        # 0 for the pit, always take the best action
         temp = 1.0 
         action_probs = get_game_action_probs(mcts_model,board,turn,temp=temp)
 
@@ -175,12 +180,16 @@ def run_game(mcts_model):
             action = np.random.choice(9,1)[0]
 
 
-        old_board = board
+        # initially use a placeholder value for value
+        # this experience is [obs, action, value]
+        
+        # quadruple our experience by rotating the board
+        for rotated_board in tictactoe_functions.get_rotated_boards(board):
+            experience.append([rotated_board,action_probs,-9999])
+
+
         board = tictactoe_functions.get_next_board(board, action, turn)
 
-        # initially use a placeholder value for value
-        # this experience is [obs, action, new_obs, value]
-        experience.append([old_board,action_probs,board,-9999])
 
         winner = tictactoe_functions.get_winner(board)
         if(winner != -1):
@@ -206,9 +215,11 @@ def update_experience_value(winner,experience):
         print("should get here for update experience_value")
 
     for index in range(len(experience)):
-        experience[index][3] = winner_value
+        experience[index][2] = winner_value
 
     # doing in place to avoid gross amounts of extra memory
+
+
 
 
 
@@ -224,33 +235,36 @@ if __name__ == "__main__":
     mcts_model = tabular_mcts(policy_value_model = policy_value_model)
 
     # num games per training loop
-    num_training_loops = 300
-    base_num_games = 50
+    num_training_loops = 500
+    base_num_games = 100
+    num_update_steps = 1
     num_games = base_num_games
 
     wins = {0:0,1:0,2:0}
 
 
 
-    total_experience = [] #fixed_size_list(100000)
+    total_experience = []#fixed_size_list(100000)
     for train_loop in range(num_training_loops):
-        for game in range(num_games):
-            winner, experience= run_game(mcts_model)
-            
-            # update the experience 
-            # based on the real winner of the game
-            update_experience_value(winner,experience)
-            # check to make sure this is updated
-            total_experience.extend(experience)
-            wins[winner] += 1
-            mcts_model.clear_tree()
+        for update_step in range(num_update_steps):
+            for game in tqdm(range(num_games),leave=False):
+                winner, experience= run_game(mcts_model)
+                
+                # update the experience 
+                # based on the real winner of the game
+                update_experience_value(winner,experience)
+                # check to make sure this is updated
+                total_experience.extend(experience)
+                wins[winner] += 1
+                mcts_model.clear_tree()
 
-        #after we have played our games, update the model
-        old_model = mcts_model.copy()
-        mcts_model.train(total_experience)
-        total_games =  num_games
-        win_averages = [x/total_games for x in wins.values()]
-        print("Ties: %.2f Player 1: %.2f Player 2: %.2f"%(win_averages[0],win_averages[1],win_averages[2]))
+            #after we have played our games, update the model
+            old_model = mcts_model.copy()
+            print("\rTraining...",end="")
+            mcts_model.train(total_experience)
+            total_games =  num_games
+            win_averages = [x/total_games for x in wins.values()]
+            print("\rTies: %.2f Player 1: %.2f Player 2: %.2f"%(win_averages[0],win_averages[1],win_averages[2]))
 
 
         # clear out the tree that we have built up 
@@ -258,31 +272,36 @@ if __name__ == "__main__":
         wins = {0:0,1:0,2:0}
 
         # run through the pit
-        num_pit_games = 25
+        num_pit_games = 35
         pit_results = pit(old_model,mcts_model,number_of_games=num_pit_games)
         print("pit results:")
         print("Ties:",pit_results[0])
         print("Old Model:",pit_results[1])
         print("New Model:",pit_results[2])
 
-        if(pit_results[2] < (pit_results[1]+pit_results[2] ) * .55):
+        # check if the new model won more than .55 % of the no tie games
+        if(pit_results[2] < (num_pit_games-pit_results[0]) * .55):
             # old_model won
             #mcts_model = tabular_mcts()
             mcts_model = old_model
             # go to before training
-            num_games *= 2
-            # get rid of the old data and train for twice as long
+            #num_games *= 2
+            num_update_steps += 1
+            total_experience = []
 
         else:
             print("keeping new model")
             num_games = base_num_games
+            num_update_steps = 1
             # we are learning a new policy,
             # remove the old data
-            total_experience = [] 
+            total_experience = []
+            print("saving model...")
             torch.save(mcts_model.model.model,"policy_value_model.torch")
 
         print("---------")
 
 
     # save value network
+   
     torch.save(mcts_model.model.model,"policy_value_model.torch")

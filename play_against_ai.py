@@ -45,11 +45,14 @@ def run_game_with_human(mcts_model,human_player_pos):
                 mcts_model.simulate_step(board,turn)
 
             # getting the actions from the mcts tree
-            actions_list = [n for n in mcts_model.get_N(board)]
+            searched_board = board
+            if(turn == 2):
+                searched_board = tictactoe_functions.flip_board(board)
+            actions_list = [n for n in mcts_model.get_N(searched_board)]
         
             action = np.argmax(actions_list)
             print(actions_list)
-            print(mcts_model.get_Q(board))
+            print(mcts_model.get_Q(searched_board))
         else:
             # player turn
             x,y = [int(x) for x in input().split()]
@@ -76,10 +79,11 @@ if __name__ == "__main__":
     mcts_model = tabular_mcts(policy_value_model=policy_value_model)
 
     winner = run_game_with_human(mcts_model,human_player_pos=human_player_position)
+    print('-----------')
     if(winner == 0):
         print("Tie!")
-    elif(winner == human_player_position-1):
+    elif(winner == (human_player_position-1)%2):
         print("Human Player was victorious")
     else:
-        print("Submit to your robot overlords human")
+        print("You got defeated by a AI")
 

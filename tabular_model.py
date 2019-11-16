@@ -1,8 +1,7 @@
 # different understanding of MCTS
 
 # three main trees
-# Q -> mapping from states,action pairs to values
-#       Q is updated while we are traversing the mcts tree
+# Q -> mapping from states,action pairs to values #       Q is updated while we are traversing the mcts tree
 # P -> produced from the neural network and it is a policy from a state
 # N -> maps states to the amount of times we have visited them
 
@@ -33,8 +32,10 @@ class torch_policy_value_model(nn.Module):
         self.hidden_layer = nn.Linear(256,512)
         self.hidden_layer2 = nn.Linear(512,512)
         self.sigmoid = nn.Sigmoid()
-        self.value_output = nn.Linear(512,1)
-        self.policy_output = nn.Linear(512,9)
+        self.value_hidden = nn.Linear(512,2048)
+        self.value_output = nn.Linear(2048,1)
+        self.policy_hidden = nn.Linear(512,2048)
+        self.policy_output = nn.Linear(2048,9)
 
     def forward(self,obs):
         x = self.input_layer(obs)
@@ -44,10 +45,12 @@ class torch_policy_value_model(nn.Module):
         x = self.hidden_layer2(x)
         x = torch.tanh(x)
 
-        policy  = self.policy_output(x)
+        policy  = self.policy_hidden(x)
+        policy  = self.policy_output(policy)
         policy  = self.sigmoid(policy)
 
-        value  = self.value_output(x)
+        value = self.value_hidden(x)
+        value  = self.value_output(value)
         value = torch.tanh(value)
 
         return policy,value
@@ -69,17 +72,9 @@ class model_wrapper():
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
 
-        #self.policy_loss = MSELoss() 
-        def keras_categorical_cross_entropy():
-            epsilon = .0001
-            def loss(prediction,real):
-                result = sum([-real[i]*torch.log2(prediction[i]) for i in range(len(prediction))])
-                print(result)
-                return result
-            return loss
-        
-
-        self.policy_loss = MSELoss()#nn.PoissonNLLLoss()#nn.CrossEntropyLoss()
+        self.policy_loss = nn.PoissonNLLLoss()
+        # self.policy_loss = MSELoss()
+        # self.policy_loss = nn.CrossEntropyLoss()
         self.value_loss = MSELoss()
         
 
@@ -103,7 +98,7 @@ class model_wrapper():
 
 
         # data should be in state,action,new_state,reward
-        obs,actions,new_obs,values = zip(*data)
+        obs,actions,values = zip(*data)
 
         # reformat data 
         obs = torch.Tensor(obs).float()
@@ -116,7 +111,7 @@ class model_wrapper():
         actions = torch.Tensor(actions).float()
 
 
-        epochs = 10
+        epochs = 25
         for i in range(epochs):
             # Update the value network
             self.optimizer.zero_grad()
@@ -172,7 +167,14 @@ class tabular_mcts:
 
     def get_N(self, board):
         serialized_board = self.serialize_board(board)
+        return self.N[serialized_board]
 
+    def get_action_list(self, board,turn):
+        # ask the model for the N's of a board
+        # we have to flip boards on turn 2
+        if(turn == 2):
+            board = self.tictactoe_functions.flip_board(board)
+        serialized_board = self.serialize_board(board)
         return self.N[serialized_board]
 
     def get_P(self,board):
@@ -182,6 +184,7 @@ class tabular_mcts:
 
 
     def update_Q(self,board,action,value):
+        # update the moving average for all rotated boards
         serialized_board = self.serialize_board(board)
         N_state_action = self.get_N(board)[action]
         Q_state_action = self.get_Q(board)[action]
@@ -190,6 +193,7 @@ class tabular_mcts:
         self.Q[serialized_board][action]  = (N_state_action*Q_state_action + value) / (N_state_action + 1)
 
     def increment_N(self,board,action):
+
         serialized_board = self.serialize_board(board)
         self.N[serialized_board][action]  += 1
 
@@ -218,38 +222,49 @@ class tabular_mcts:
         if(winner == 2):
             return -1
 
+    def get_rotated_boards(self,board,turn=1):
+        # return all 4 boards that are the same but rotated
+        return self.tictactoe_functions.get_rotated_boards(board)
+
+
     def expand_node(self,board):
         # first add this to Q,N
         serialized_board =  self.serialize_board(board)
         self.Q[serialized_board] = [0 for i in range(self.number_actions)]
         self.N[serialized_board] = [0 for i in range(self.number_actions)]
 
+
+
     def simulate_step(self,board,turn,debug=False):
-        # print("looking at board", board)
+
+        # if the turn is 2 flip the board,
+        # that way we are always looking from x perspective
+        if(turn == 2):
+            board = self.tictactoe_functions.flip_board(board)
+
+        # check if this is a winning board
+        winner = self.check_for_winner(board)
+        if(winner != -2):
+            return -winner
+
         # check board to see if we have seen this before
         if(not self.seen(board)):
-            # check if this is a winning board
-            winner = self.check_for_winner(board)
-            if(winner != -2):
-                return winner
                 
-            # we haven't seen this board before
+            # we haven't seen this board before and we know
+            # its not a winning board
             # gotta expand this node
             self.expand_node(board)
             predicted_policy, predicted_value = self.call_model(board)
             predicted_policy = [float(x) for x in predicted_policy]
             self.set_P(board, predicted_policy)
             predicted_value = float(predicted_value)
-            return  predicted_value
+            return  -predicted_value
 
-        winner = self.check_for_winner(board)
-        if(winner != -2):
-            return winner
         # we have seen this position before, so we have to go deeper
 
         # to know which node we want to select to explore we use an interesting formula
         # which is U[s][a] = Q[s][a] + c_puct*P[s][a] * sqrt(sum(N[s]))/(1+N[s][a])
-        c_puct = 10.0 # used for exploration
+        c_puct = 1.0 # used for exploration
 
         # U stands for Upper confidence bound
 
@@ -269,13 +284,14 @@ class tabular_mcts:
                 pass
                 # the other users turn
                 # inverse the Q,P values
-                # Q_s_a = -Q_s_a
+                #Q_s_a = -Q_s_a
                 # P_s_a = -P_s_a
             # print(turn, Q_s_a)
             # N_term = math.sqrt(sum(N_s))/(N_s[action]+1)
             N_term = math.sqrt(sum(N_s))/(N_s[action]+1)
 
-            U = Q_s_a + c_puct*P_s_a*N_term
+            #U = Q_s_a + c_puct*P_s_a*N_term
+            U = Q_s_a + c_puct*N_term
 
 
             U_list.append((action,U))
@@ -298,14 +314,21 @@ class tabular_mcts:
             print("P:",P_s)
             print("possible",self.tictactoe_functions.get_possible_actions(board))
             print("best one", best_action)
+
+        # unflip the board before an action is taken
+        regular_board = board
+        if(turn == 2):
+            regular_board = self.tictactoe_functions.flip_board(board)
+
             
         # print(best_action)
-        board_after_action = self.tictactoe_functions.get_next_board(board,best_action,turn)
+        board_after_action = self.tictactoe_functions.get_next_board(regular_board,best_action,turn)
 
         next_turn = 2 if turn == 1 else 1
         # print("\tgoing down on this board",board,action)
         value_below = self.simulate_step(board_after_action,next_turn,debug=debug)
         # update Q and N
+        # updating these values on the flipped board
         self.update_Q(board, best_action, value_below)
         self.increment_N(board, best_action)
 

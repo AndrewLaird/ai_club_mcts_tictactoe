@@ -2,7 +2,6 @@ import random
 import math
 import numpy as np
 
-
 class tictactoe_methods:
 
     def __init__(self):
@@ -17,8 +16,21 @@ class tictactoe_methods:
             [2, 4, 6],
         ]
 
+        self.rotations = [
+            [6,3,0,7,4,1,8,5,2],
+            [8,7,6,5,4,3,2,1,0],
+            [2,5,8,1,4,7,0,3,6]
+        ]
+
     def get_initial_board(self):
         return [0, 0, 0, 0, 0, 0, 0, 0, 0]
+
+    def flip_board(self,board):
+        flipped = [0 for i in range(9)]
+        for i in range(9):
+            if(board[i] != 0):
+                flipped[i] = 1 if board[i] == 2 else 2
+        return flipped
 
     def get_next_board(self, board, action, turn):
         new_board = board.copy()
@@ -55,6 +67,18 @@ class tictactoe_methods:
                 if board[board_state[1]] == board[board_state[2]]:
                     return board[board_state[0]]
         return -1
+
+    def get_rotated_boards(self,board):
+        # return all 4 rotated_boards
+        boards = [board]
+        for rotation in self.rotations:
+            rotated_board = [0 for i in range(9)]
+            for start,end in enumerate(rotation):
+                rotated_board[end] = board[start]
+            boards.append(rotated_board)
+        return boards
+
+
     
     def pretty_print(self,board):
         print("%s|%s|%s"%(board[0],board[1],board[2]))
