@@ -236,7 +236,7 @@ if __name__ == "__main__":
 
     # num games per training loop
     num_training_loops = 500
-    base_num_games = 100
+    base_num_games = 50
     num_update_steps = 1
     num_games = base_num_games
 
@@ -256,13 +256,13 @@ if __name__ == "__main__":
                 # check to make sure this is updated
                 total_experience.extend(experience)
                 wins[winner] += 1
-                mcts_model.clear_tree()
+                #mcts_model.clear_tree()
 
             #after we have played our games, update the model
             old_model = mcts_model.copy()
             print("\rTraining...",end="")
             mcts_model.train(total_experience)
-            total_games =  num_games
+            total_games =  num_games*(update_step+1)
             win_averages = [x/total_games for x in wins.values()]
             print("\rTies: %.2f Player 1: %.2f Player 2: %.2f"%(win_averages[0],win_averages[1],win_averages[2]))
 
@@ -270,11 +270,13 @@ if __name__ == "__main__":
         # clear out the tree that we have built up 
         # with this set of weights
         wins = {0:0,1:0,2:0}
+        mcts_model.clear_tree()
 
         # run through the pit
-        num_pit_games = 35
+        print("Competing in the Pit...\r",end="")
+        num_pit_games = 50
         pit_results = pit(old_model,mcts_model,number_of_games=num_pit_games)
-        print("pit results:")
+        print("pit results:             ")
         print("Ties:",pit_results[0])
         print("Old Model:",pit_results[1])
         print("New Model:",pit_results[2])
