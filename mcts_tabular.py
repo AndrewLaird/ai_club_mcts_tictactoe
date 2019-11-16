@@ -171,7 +171,6 @@ def run_game(mcts_model):
         temp = 1.0 
         action_probs = get_game_action_probs(mcts_model,board,turn,temp=temp)
 
-
         #chose a action from these probabilities
         action = np.random.choice(9,1,p=action_probs)[0]
 
@@ -184,8 +183,10 @@ def run_game(mcts_model):
         # this experience is [obs, action, value]
         
         # quadruple our experience by rotating the board
-        for rotated_board in tictactoe_functions.get_rotated_boards(board):
-            experience.append([rotated_board,action_probs,-9999])
+        #rotated_boards = tictactoe_functions.get_rotated_boards(board)
+        #rotated_action_probs = tictactoe_functions.get_rotated_boards(action_probs)
+        #for i in range(4):
+        experience.append([board,action_probs,-9999])
 
 
         board = tictactoe_functions.get_next_board(board, action, turn)
@@ -237,7 +238,6 @@ if __name__ == "__main__":
     # num games per training loop
     num_training_loops = 500
     base_num_games = 50
-    num_update_steps = 1
     num_games = base_num_games
 
     wins = {0:0,1:0,2:0}
@@ -246,31 +246,30 @@ if __name__ == "__main__":
 
     total_experience = []#fixed_size_list(100000)
     for train_loop in range(num_training_loops):
-        for update_step in range(num_update_steps):
-            for game in tqdm(range(num_games),leave=False):
-                winner, experience= run_game(mcts_model)
-                
-                # update the experience 
-                # based on the real winner of the game
-                update_experience_value(winner,experience)
-                # check to make sure this is updated
-                total_experience.extend(experience)
-                wins[winner] += 1
-                #mcts_model.clear_tree()
+        for game in tqdm(range(num_games),leave=False):
+            winner, experience= run_game(mcts_model)
+            
+            # update the experience 
+            # based on the real winner of the game
+            update_experience_value(winner,experience)
+            # check to make sure this is updated
+            total_experience.extend(experience)
+            wins[winner] += 1
+            #mcts_model.clear_tree()
 
-            #after we have played our games, update the model
-            old_model = mcts_model.copy()
-            print("\rTraining...",end="")
-            mcts_model.train(total_experience)
-            total_games =  num_games*(update_step+1)
-            win_averages = [x/total_games for x in wins.values()]
-            print("\rTies: %.2f Player 1: %.2f Player 2: %.2f"%(win_averages[0],win_averages[1],win_averages[2]))
+        #after we have played our games, update the model
+        old_model = mcts_model.copy()
+        print("\rTraining...",end="")
+        mcts_model.train(total_experience)
+        total_games =  num_games
+        win_averages = [x/total_games for x in wins.values()]
+        print("\rTies: %.2f Player 1: %.2f Player 2: %.2f                  "%(win_averages[0],win_averages[1],win_averages[2]))
 
 
         # clear out the tree that we have built up 
+        mcts_model.clear_tree()
         # with this set of weights
         wins = {0:0,1:0,2:0}
-        mcts_model.clear_tree()
 
         # run through the pit
         print("Competing in the Pit...\r",end="")
@@ -282,14 +281,14 @@ if __name__ == "__main__":
         print("New Model:",pit_results[2])
 
         # check if the new model won more than .55 % of the no tie games
-        if(pit_results[2] < (num_pit_games-pit_results[0]) * .55):
+        if(pit_results[2] <= (num_pit_games-pit_results[0]) * .5):
             # old_model won
             #mcts_model = tabular_mcts()
             mcts_model = old_model
             # go to before training
-            #num_games *= 2
-            num_update_steps += 1
+            num_games *= 2
             total_experience = []
+            print("old model won, training for twice as long")
 
         else:
             print("keeping new model")
@@ -300,6 +299,7 @@ if __name__ == "__main__":
             total_experience = []
             print("saving model...")
             torch.save(mcts_model.model.model,"policy_value_model.torch")
+
 
         print("---------")
 
