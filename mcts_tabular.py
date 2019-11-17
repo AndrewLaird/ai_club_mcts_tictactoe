@@ -183,10 +183,10 @@ def run_game(mcts_model):
         # this experience is [obs, action, value]
         
         # quadruple our experience by rotating the board
-        #rotated_boards = tictactoe_functions.get_rotated_boards(board)
-        #rotated_action_probs = tictactoe_functions.get_rotated_boards(action_probs)
-        #for i in range(4):
-        experience.append([board,action_probs,-9999])
+        rotated_boards = tictactoe_functions.get_rotated_boards(board)
+        rotated_action_probs = tictactoe_functions.get_rotated_boards(action_probs)
+        for i in range(4):
+            experience.append([rotated_boards[i],rotated_action_probs[i],-9999])
 
 
         board = tictactoe_functions.get_next_board(board, action, turn)
@@ -280,8 +280,8 @@ if __name__ == "__main__":
         print("Old Model:",pit_results[1])
         print("New Model:",pit_results[2])
 
-        # check if the new model won more than .55 % of the no tie games
-        if(pit_results[2] <= (num_pit_games-pit_results[0]) * .5):
+        # check if the new model won more than .51 % of the no tie games
+        if(pit_results[2] < (num_pit_games-pit_results[0]) * .51):
             # old_model won
             #mcts_model = tabular_mcts()
             mcts_model = old_model

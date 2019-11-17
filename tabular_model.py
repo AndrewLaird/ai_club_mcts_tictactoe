@@ -124,7 +124,7 @@ class model_wrapper():
 
             total_loss = v_loss+p_loss
             total_loss.backward()
-            print("Loss:",total_loss,end="\r")
+            print("Loss:",total_loss,"                  ",end="\r")
 
             self.optimizer.step()
             
@@ -265,7 +265,7 @@ class tabular_mcts:
 
         # to know which node we want to select to explore we use an interesting formula
         # which is U[s][a] = Q[s][a] + c_puct*P[s][a] * sqrt(sum(N[s]))/(1+N[s][a])
-        c_puct = 4.0 # used for exploration
+        c_puct = 1.0 # used for exploration
 
         # U stands for Upper confidence bound
 

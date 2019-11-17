@@ -51,8 +51,8 @@ def run_game_with_human(mcts_model,human_player_pos):
             actions_list = [n for n in mcts_model.get_N(searched_board)]
         
             action = np.argmax(actions_list)
-            print(actions_list)
-            print(mcts_model.get_Q(searched_board))
+            print("Visit counts:",actions_list)
+            print("value of each next state:",mcts_model.get_Q(searched_board))
         else:
             # player turn
             x,y = [int(x) for x in input().split()]
