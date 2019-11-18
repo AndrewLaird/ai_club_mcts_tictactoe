@@ -71,7 +71,7 @@ class model_wrapper():
             self.model = torch_policy_value_model()
         else:
             self.model = policy_value_model
-        learning_rate = 0.0005
+        learning_rate = 0.0001
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
 
@@ -114,7 +114,7 @@ class model_wrapper():
         actions = torch.Tensor(actions).float()
 
 
-        epochs = 25
+        epochs = 50
         for i in range(epochs):
             # Update the value network
             self.optimizer.zero_grad()

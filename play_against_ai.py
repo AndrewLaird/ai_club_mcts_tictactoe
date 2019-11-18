@@ -56,7 +56,7 @@ def run_game_with_human(mcts_model,human_player_pos):
             print("policy:",mcts_model.get_P(searched_board))
         else:
             # player turn
-            x,y = [int(x) for x in input().split()]
+            x,y = [int(x) for x in input("input[0-2] x y: ").split()]
             action = y*3 + x
 
         board = tictactoe_functions.get_next_board(board, action, turn)

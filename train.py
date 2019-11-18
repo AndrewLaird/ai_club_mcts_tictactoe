@@ -266,6 +266,8 @@ if __name__ == "__main__":
             # check to make sure this is updated
             total_experience.extend(experience)
             wins[winner] += 1
+
+            # what would happen if you cleared the tree here?
             #mcts_model.clear_tree()
 
         #after we have played our games, update the model
@@ -277,10 +279,10 @@ if __name__ == "__main__":
         print("\rTies: %.2f Player 1: %.2f Player 2: %.2f                  "%(win_averages[0],win_averages[1],win_averages[2]))
 
 
-        # clear out the tree that we have built up 
-        mcts_model.clear_tree()
         # with this set of weights
         wins = {0:0,1:0,2:0}
+        # clear out the tree that we have built up 
+        mcts_model.clear_tree()
 
         # run through the pit
         print("\rCompeting in the Pit...",end="")
@@ -310,6 +312,12 @@ if __name__ == "__main__":
             total_experience = []
             print("saving model...")
             torch.save(mcts_model.model.model,"policy_value_model.torch")
+
+        if(num_games >= 64*100):
+            print("thats alot of games to play, we are just going to try to play less")
+            num_games = base_num_games
+
+
 
 
         print("---------")
