@@ -39,7 +39,7 @@ def run_game_with_human(mcts_model,human_player_pos):
         if(turn % 2 == human_player_pos):
             # robot turn
             # simulating the games
-            simulation_steps = 100
+            simulation_steps = 300
             for i in range(simulation_steps):
                 #print('sim:',i)
                 mcts_model.simulate_step(board,turn)
@@ -53,6 +53,7 @@ def run_game_with_human(mcts_model,human_player_pos):
             action = np.argmax(actions_list)
             print("Visit counts:",actions_list)
             print("value of each next state:",mcts_model.get_Q(searched_board))
+            print("policy:",mcts_model.get_P(searched_board))
         else:
             # player turn
             x,y = [int(x) for x in input().split()]
@@ -85,5 +86,5 @@ if __name__ == "__main__":
     elif(winner == (human_player_position-1)%2):
         print("Human Player was victorious")
     else:
-        print("You got defeated by a AI")
+        print("You were defeated by a AI")
 

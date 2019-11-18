@@ -31,6 +31,7 @@ class torch_policy_value_model(nn.Module):
         self.input_layer = nn.Linear(9,256)
         self.hidden_layer = nn.Linear(256,512)
         self.hidden_layer2 = nn.Linear(512,512)
+        self.hidden_layer3 = nn.Linear(512,512)
         self.sigmoid = nn.Sigmoid()
         self.value_hidden = nn.Linear(512,2048)
         self.value_output = nn.Linear(2048,1)
@@ -43,6 +44,8 @@ class torch_policy_value_model(nn.Module):
         x = self.hidden_layer(x)
         x = torch.tanh(x)
         x = self.hidden_layer2(x)
+        x = torch.tanh(x)
+        x = self.hidden_layer3(x)
         x = torch.tanh(x)
 
         policy  = self.policy_hidden(x)
@@ -68,7 +71,7 @@ class model_wrapper():
             self.model = torch_policy_value_model()
         else:
             self.model = policy_value_model
-        learning_rate = 0.0005
+        learning_rate = 0.00005
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
 
@@ -124,7 +127,7 @@ class model_wrapper():
 
             total_loss = v_loss+p_loss
             total_loss.backward()
-            print("Loss:",total_loss,"                  ",end="\r")
+            print("\rLoss:",total_loss,"                  ",end="")
 
             self.optimizer.step()
             

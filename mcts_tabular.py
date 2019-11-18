@@ -168,7 +168,7 @@ def run_game(mcts_model):
         # the tree will explore
         # 1 for exploration
         # 0 for the pit, always take the best action
-        temp = 1.0 
+        temp = 1.0
         action_probs = get_game_action_probs(mcts_model,board,turn,temp=temp)
 
         #chose a action from these probabilities
@@ -183,10 +183,17 @@ def run_game(mcts_model):
         # this experience is [obs, action, value]
         
         # quadruple our experience by rotating the board
-        rotated_boards = tictactoe_functions.get_rotated_boards(board)
-        rotated_action_probs = tictactoe_functions.get_rotated_boards(action_probs)
-        for i in range(4):
-            experience.append([rotated_boards[i],rotated_action_probs[i],-9999])
+        # if turn == 2 we have to flip the board for training
+        training_board = board
+        if(turn == 2):
+            training_board = tictactoe_functions.flip_board(board)
+        experience.append([training_board,action_probs,-9999])
+
+        # rotating boards to get more info
+        #rotated_boards = tictactoe_functions.get_rotated_boards(training_board)
+        #rotated_action_probs = tictactoe_functions.get_rotated_boards(action_probs)
+        #for i in range(4):
+            #experience.append([rotated_boards[i],rotated_action_probs[i],-9999])
 
 
         board = tictactoe_functions.get_next_board(board, action, turn)
@@ -215,10 +222,18 @@ def update_experience_value(winner,experience):
     else:
         print("should get here for update experience_value")
 
+    # doing in place to avoid gross amounts of extra memory
+
+    # we have to ossolate winners because we flipped 
+    # half the boards
     for index in range(len(experience)):
         experience[index][2] = winner_value
+        # will be winner_value when turn == 1
+        # and -winner_value when turn == 2
+        #if((index+1) % 4 == 0):
+            # because we rotated 4 times
+        winner_value = -winner_value
 
-    # doing in place to avoid gross amounts of extra memory
 
 
 
@@ -287,7 +302,7 @@ if __name__ == "__main__":
             mcts_model = old_model
             # go to before training
             num_games *= 2
-            total_experience = []
+            #total_experience = []
             print("old model won, training for twice as long")
 
         else:
