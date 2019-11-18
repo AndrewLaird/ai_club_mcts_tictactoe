@@ -183,13 +183,13 @@ def run_game(mcts_model):
         training_board = board
         if(turn == 2):
             training_board = tictactoe_functions.flip_board(board)
-        experience.append([training_board,action_probs,-9999])
+        #experience.append([training_board,action_probs,-9999])
 
         # rotating boards to get more info
-        #rotated_boards = tictactoe_functions.get_rotated_boards(training_board)
-        #rotated_action_probs = tictactoe_functions.get_rotated_boards(action_probs)
-        #for i in range(4):
-            #experience.append([rotated_boards[i],rotated_action_probs[i],-9999])
+        rotated_boards = tictactoe_functions.get_rotated_boards(training_board)
+        rotated_action_probs = tictactoe_functions.get_rotated_boards(action_probs)
+        for i in range(4):
+            experience.append([rotated_boards[i],rotated_action_probs[i],-9999])
 
 
         board = tictactoe_functions.get_next_board(board, action, turn)
@@ -226,9 +226,9 @@ def update_experience_value(winner,experience):
         experience[index][2] = winner_value
         # will be winner_value when turn == 1
         # and -winner_value when turn == 2
-        #if((index+1) % 4 == 0):
+        if(index != 0 and (index) % 4 == 0):
             # because we rotated 4 times
-        winner_value = -winner_value
+            winner_value = -winner_value
 
 
 
