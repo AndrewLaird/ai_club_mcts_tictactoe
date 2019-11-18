@@ -127,7 +127,7 @@ class model_wrapper():
 
             total_loss = v_loss+p_loss
             total_loss.backward()
-            print("\rLoss:",total_loss,"                  ",end="")
+            print("\rLoss:"+str(total_loss)+"                  ",end="")
 
             self.optimizer.step()
             

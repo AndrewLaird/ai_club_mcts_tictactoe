@@ -287,10 +287,10 @@ if __name__ == "__main__":
         wins = {0:0,1:0,2:0}
 
         # run through the pit
-        print("Competing in the Pit...\r",end="")
+        print("Competing in the Pit...",end="")
         num_pit_games = 50
         pit_results = pit(old_model,mcts_model,number_of_games=num_pit_games)
-        print("pit results:             ")
+        print("\rpit results:             ")
         print("Ties:",pit_results[0])
         print("Old Model:",pit_results[1])
         print("New Model:",pit_results[2])
