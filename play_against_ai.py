@@ -86,5 +86,5 @@ if __name__ == "__main__":
     elif(winner == (human_player_position-1)%2):
         print("Human Player was victorious")
     else:
-        print("You were defeated by a AI")
+        print("You were defeated by an AI")
 

@@ -114,7 +114,7 @@ class model_wrapper():
         actions = torch.Tensor(actions).float()
 
 
-        epochs = 50
+        epochs = 25
         for i in range(epochs):
             # Update the value network
             self.optimizer.zero_grad()
