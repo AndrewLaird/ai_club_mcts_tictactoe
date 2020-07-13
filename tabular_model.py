@@ -61,6 +61,9 @@ class resnet_policy_value_model(nn.Module):
             ResBlock(16),
             nn.BatchNorm2d(16),
             nn.ReLU(),
+            ResBlock(16),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
             convPool(16,64),
             Flatten(),
         )
@@ -141,7 +144,7 @@ class model_wrapper():
             self.model = resnet_policy_value_model()#torch_policy_value_model()
         else:
             self.model = policy_value_model
-        learning_rate = 1e-4
+        learning_rate = 1e-3
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
 

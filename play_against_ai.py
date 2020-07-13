@@ -39,7 +39,7 @@ def run_game_with_human(mcts_model,human_player_pos):
         if(turn % 2 == human_player_pos):
             # robot turn
             # simulating the games
-            simulation_steps = 300
+            simulation_steps = 10
             for i in range(simulation_steps):
                 #print('sim:',i)
                 mcts_model.simulate_step(board,turn)

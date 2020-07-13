@@ -103,9 +103,9 @@ def pit(old_model,new_model,number_of_games=25):
                 action_list = get_model_action(player2,board,turn)
                 action = np.argmax(action_list) 
                 
-            if(player_turn == 0):
+            #if(player_turn == 0):
                 # first move completely random
-                action = np.random.choice(9,1)[0]
+                # action = np.random.choice(9,1)[0]
 
 
 
@@ -172,8 +172,7 @@ def run_game(mcts_model,temp=1.0):
 
         if(game_step == 0):
             # truly random for first step
-            #action = np.random.choice(9,1)[0]
-            pass
+            action = np.random.choice(9,1)[0]
 
 
         # initially use a placeholder value for value
