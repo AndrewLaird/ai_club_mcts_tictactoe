@@ -133,8 +133,8 @@ def pit(old_model,new_model,number_of_games=25):
 def get_game_action_probs(mcts_model, board, turn, temp=1.0):
     visit_counts = get_model_action(mcts_model,board,turn)
     # number of times each node was visisted under this node
-
-    if(temp == 0):
+    # if temp is very small
+    if(temp < .05):
         # we are going to take the one with
         # the highest visit count
         action_index  = np.argmax(visit_counts)
@@ -152,7 +152,7 @@ def get_game_action_probs(mcts_model, board, turn, temp=1.0):
     return action_probs
 
 
-def run_game(mcts_model):
+def run_game(mcts_model,temp=1.0):
 
     tictactoe_functions = tictactoe_methods()
     board = tictactoe_functions.get_initial_board()
@@ -164,15 +164,16 @@ def run_game(mcts_model):
         # the tree will explore
         # 1 for exploration
         # 0 for the pit, always take the best action
-        temp = 1.0
         action_probs = get_game_action_probs(mcts_model,board,turn,temp=temp)
 
         #chose a action from these probabilities
         action = np.random.choice(9,1,p=action_probs)[0]
 
+
         if(game_step == 0):
             # truly random for first step
-            action = np.random.choice(9,1)[0]
+            #action = np.random.choice(9,1)[0]
+            pass
 
 
         # initially use a placeholder value for value
@@ -200,6 +201,7 @@ def run_game(mcts_model):
             return winner,experience
             break
         turn = 2 if turn == 1 else 1
+
 
 
 
@@ -253,12 +255,13 @@ if __name__ == "__main__":
 
     wins = {0:0,1:0,2:0}
 
+    temp = 1.0
 
 
     total_experience = []#fixed_size_list(100000)
     for train_loop in range(num_training_loops):
         for game in tqdm(range(num_games),leave=False):
-            winner, experience= run_game(mcts_model)
+            winner, experience= run_game(mcts_model,temp=temp)
             
             # update the experience 
             # based on the real winner of the game
@@ -269,6 +272,7 @@ if __name__ == "__main__":
 
             # what would happen if you cleared the tree here?
             #mcts_model.clear_tree()
+            temp *= .99
 
         #after we have played our games, update the model
         old_model = mcts_model.copy()
@@ -293,8 +297,8 @@ if __name__ == "__main__":
         print("Old Model:",pit_results[1])
         print("New Model:",pit_results[2])
 
-        # check if the new model won more than .51 % of the no tie games
-        if(pit_results[2] < (num_pit_games-pit_results[0]) * .51):
+        # check if the new model won more than .50 % of the no tie games
+        if(pit_results[2] < (num_pit_games-pit_results[0]) * .50):
             # old_model won
             #mcts_model = tabular_mcts()
             mcts_model = old_model

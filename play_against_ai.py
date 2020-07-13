@@ -83,7 +83,7 @@ if __name__ == "__main__":
     print('-----------')
     if(winner == 0):
         print("Tie!")
-    elif(winner == (human_player_position-1)%2):
+    elif(winner == (human_player_position)+1):
         print("Human Player was victorious")
     else:
         print("You were defeated by an AI")

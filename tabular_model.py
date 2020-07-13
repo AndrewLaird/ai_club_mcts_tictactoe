@@ -25,9 +25,79 @@ import torch.optim as optim
 import sys
 from os import path
 
+class Flatten(nn.Module):
+    def forward(self, input):
+        return input.view(input.size(0), -1)
+
+
+def conv(in_channels, out_channels):
+    return nn.Conv2d(in_channels,out_channels,kernel_size=3,stride=1,padding=1)
+def convPool(in_channels,out_channels):
+    # takes a 3x3 down to a 1x1
+    return nn.Conv2d(in_channels,out_channels,kernel_size=3,stride=1)
+
+class ResBlock(nn.Module):
+    def __init__(self, nf):
+        super().__init__()
+        self.conv1 = conv(nf,nf)
+        self.conv2 = conv(nf,nf)
+
+    def forward(self, x): return x + self.conv2(self.conv1(x))
+
+class resnet_policy_value_model(nn.Module):
+    def __init__(self):
+        super(resnet_policy_value_model, self).__init__()
+
+        self.hidden_model = nn.Sequential(
+            conv(1, 8),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            ResBlock(8),
+            nn.BatchNorm2d(8),
+            nn.ReLU(),
+            conv(8, 16),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            ResBlock(16),
+            nn.BatchNorm2d(16),
+            nn.ReLU(),
+            convPool(16,64),
+            Flatten(),
+        )
+
+        self.value_hidden = nn.Linear(64,8)
+        self.value_output = nn.Linear(8,1)
+        self.policy_hidden = nn.Linear(64,16)
+        self.policy_output = nn.Linear(16,9)
+
+    def forward(self,obs):
+        x = obs.reshape(-1,1,3,3)
+        hidden_rep = self.hidden_model(x)
+        
+        policy  = self.policy_hidden(hidden_rep)
+        policy  = self.policy_output(policy)
+        policy  = nn.Sigmoid()(policy)
+
+        value = self.value_hidden(hidden_rep)
+        value  = self.value_output(value)
+        value = torch.tanh(value)
+
+
+        #policy = policy[0]
+        #value =value[0]
+
+
+        return policy,value
+
+
+
+        
+
+
 class torch_policy_value_model(nn.Module):
     def __init__(self):
         super(torch_policy_value_model, self).__init__()
+
         self.input_layer = nn.Linear(9,256)
         self.hidden_layer = nn.Linear(256,512)
         self.hidden_layer2 = nn.Linear(512,512)
@@ -68,10 +138,10 @@ class model_wrapper():
     def __init__(self,policy_value_model=None):
         # create the model
         if(policy_value_model == None):
-            self.model = torch_policy_value_model()
+            self.model = resnet_policy_value_model()#torch_policy_value_model()
         else:
             self.model = policy_value_model
-        learning_rate = 0.0001
+        learning_rate = 1e-4
 
         self.optimizer = optim.Adam(self.model.parameters(), lr=learning_rate)
 
@@ -114,7 +184,7 @@ class model_wrapper():
         actions = torch.Tensor(actions).float()
 
 
-        epochs = 50
+        epochs = 100
         for i in range(epochs):
             # Update the value network
             self.optimizer.zero_grad()
@@ -259,6 +329,8 @@ class tabular_mcts:
             # gotta expand this node
             self.expand_node(board)
             predicted_policy, predicted_value = self.call_model(board)
+            predicted_policy = predicted_policy[0]
+            predicted_value = predicted_value[0]
             predicted_policy = [float(x) for x in predicted_policy]
             self.set_P(board, predicted_policy)
             predicted_value = float(predicted_value)
@@ -341,7 +413,7 @@ class tabular_mcts:
     def copy(self):
         # copy both neural networks
 
-        policy_value_network = torch_policy_value_model()
+        policy_value_network = resnet_policy_value_model()#torch_policy_value_model()
         policy_value_network.load_state_dict(self.model.model.state_dict())
         copy = tabular_mcts(policy_value_model=policy_value_network)
         return copy
