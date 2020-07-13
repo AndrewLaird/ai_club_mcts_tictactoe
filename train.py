@@ -60,7 +60,7 @@ class fixed_size_list():
 
 def get_model_action(model,board,turn):
     # simulating the games
-    simulation_steps = 50
+    simulation_steps = 10
     for i in range(simulation_steps):
         #print('sim:',i)
         model.simulate_step(board,turn)

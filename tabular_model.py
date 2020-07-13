@@ -172,8 +172,7 @@ class model_wrapper():
 
         # data should be in state,action,new_state,reward
         obs,actions,values = zip(*data)
-
-        # reformat data 
+# reformat data 
         obs = torch.Tensor(obs).float()
         values = torch.Tensor(values).float().view((-1,1))
 
@@ -184,7 +183,7 @@ class model_wrapper():
         actions = torch.Tensor(actions).float()
 
 
-        epochs = 100
+        epochs = 10
         for i in range(epochs):
             # Update the value network
             self.optimizer.zero_grad()
